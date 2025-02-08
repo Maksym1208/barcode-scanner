@@ -52,7 +52,7 @@
             // Получаем доступ к камере
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
                 .then((stream) => {
-                    video.srcObject = stream; // Отображаем поток с камеры
+                    video.srcObject = stream; // Передаём поток с камеры в элемент <video>
                     video.play(); // Запускаем видео
 
                     // Инициализация QuaggaJS
