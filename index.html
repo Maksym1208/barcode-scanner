@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Сканер штрихкодів</title>
-    <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -42,84 +42,43 @@
         const startButton = document.getElementById('start-button');
         const result = document.getElementById('result');
 
-        // Проверка поддержки getUserMedia
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            result.innerText = "Ваш браузер не підтримує доступ до камери.";
+        // Инициализация ZXing
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+
+        // Запуск сканирования
+        function startScanning() {
+            result.innerText = "Сканування...";
+
+            // Получаем доступ к задней камере
+            codeReader.decodeFromVideoDevice(undefined, video, (result, err) => {
+                if (result) {
+                    // Штрих-код успешно распознан
+                    result.innerText = "Знайдено штрихкод: " + result.text;
+
+                    // Отправляем результат в Telegram Bot
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        window.Telegram.WebApp.sendData(result.text);
+                    }
+
+                    // Останавливаем сканирование
+                    codeReader.reset();
+                }
+                if (err) {
+                    console.error("Помилка сканування:", err);
+                    result.innerText = "Помилка сканування. Спробуйте ще раз.";
+                }
+            });
         }
 
-        // Инициализация сканера
-        function initScanner() {
-            // Получаем доступ к задней камере
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: "environment", // Используем заднюю камеру
-                    width: { ideal: 1280 },   // Оптимальное разрешение для фокусировки
-                    height: { ideal: 720 }    // Оптимальное разрешение для фокусировки
-                }
-            })
-                .then((stream) => {
-                    video.srcObject = stream; // Передаём поток с камеры в элемент <video>
-                    video.play(); // Запускаем видео
-
-                    // Инициализация QuaggaJS
-                    Quagga.init({
-                        inputStream: {
-                            name: "Live",
-                            type: "LiveStream",
-                            target: video,
-                            constraints: {
-                                width: 640,
-                                height: 480,
-                                facingMode: "environment" // Используем заднюю камеру
-                            },
-                        },
-                        decoder: {
-                            readers: ["code_128_reader", "ean_reader", "upc_reader"], // Поддерживаемые форматы штрихкодов
-                            debug: {
-                                drawBoundingBox: true, // Рисуем рамку вокруг штрих-кода
-                                showFrequency: true,   // Показываем частоту сканирования
-                                drawScanline: true,    // Рисуем линию сканирования
-                                showPattern: true      // Показываем паттерн сканирования
-                            }
-                        },
-                        locator: {
-                            halfSample: true,          // Улучшаем точность распознавания
-                            patchSize: "medium"        // Размер области для сканирования
-                        }
-                    }, function (err) {
-                        if (err) {
-                            console.error("Помилка ініціалізації сканера:", err);
-                            result.innerText = "Помилка ініціалізації сканера. Перевірте доступ до камери.";
-                            return;
-                        }
-                        console.log("Сканер готов до роботи.");
-                        Quagga.start();
-
-                        // Обработка результата сканирования
-                        Quagga.onDetected(function (result) {
-                            const code = result.codeResult.code;
-                            result.innerText = "Знайдено штрихкод: " + code;
-
-                            // Отправляем результат в Telegram Bot
-                            if (window.Telegram && window.Telegram.WebApp) {
-                                window.Telegram.WebApp.sendData(code);
-                            }
-
-                            // Останавливаем сканер после успешного сканирования
-                            Quagga.stop();
-                        });
-                    });
-                })
-                .catch((err) => {
-                    console.error("Помилка доступу до камери:", err);
-                    result.innerText = "Помилка доступу до камери. Перевірте дозвіл на доступ.";
-                });
+        // Остановка сканирования
+        function stopScanning() {
+            codeReader.reset();
+            result.innerText = "Сканування зупинено.";
         }
 
         // Запуск сканирования по нажатию кнопки
         startButton.addEventListener('click', () => {
-            result.innerText = "Сканування...";
-            initScanner();
+            startScanning();
         });
     </script>
 </body>
