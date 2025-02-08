@@ -23,6 +23,12 @@
             cursor: pointer;
             margin-bottom: 20px;
         }
+        #flash-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
         #result {
             font-size: 18px;
             font-weight: bold;
@@ -34,51 +40,98 @@
     <h1>Сканування штрихкоду</h1>
     <video id="video" width="640" height="480" autoplay></video>
     <button id="start-button">Сканировать</button>
+    <button id="flash-button">Включити вспышку</button>
     <p id="result"></p>
 
     <script>
         // Элементы DOM
         const video = document.getElementById('video');
         const startButton = document.getElementById('start-button');
+        const flashButton = document.getElementById('flash-button');
         const result = document.getElementById('result');
 
         // Инициализация ZXing
         const codeReader = new ZXing.BrowserMultiFormatReader();
 
+        // Переменная для хранения потока с камеры
+        let mediaStream;
+
         // Запуск сканирования
-        function startScanning() {
+        async function startScanning() {
             result.innerText = "Сканування...";
 
-            // Получаем доступ к задней камере
-            codeReader.decodeFromVideoDevice(undefined, video, (result, err) => {
-                if (result) {
-                    // Штрих-код успешно распознан
-                    result.innerText = "Знайдено штрихкод: " + result.text;
-
-                    // Отправляем результат в Telegram Bot
-                    if (window.Telegram && window.Telegram.WebApp) {
-                        window.Telegram.WebApp.sendData(result.text);
+            try {
+                // Получаем доступ к задней камере с автофокусом
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "environment", // Используем заднюю камеру
+                        width: { ideal: 1280 },   // Оптимальное разрешение
+                        height: { ideal: 720 },   // Оптимальное разрешение
+                        focusMode: "continuous"   // Непрерывный автофокус
                     }
+                });
 
-                    // Останавливаем сканирование
-                    codeReader.reset();
-                }
-                if (err) {
-                    console.error("Помилка сканування:", err);
-                    result.innerText = "Помилка сканування. Спробуйте ще раз.";
-                }
-            });
+                // Передаём поток с камеры в элемент <video>
+                video.srcObject = mediaStream;
+                video.play();
+
+                // Запускаем сканирование
+                codeReader.decodeFromVideoDevice(undefined, video, (result, err) => {
+                    if (result) {
+                        // Штрих-код успешно распознан
+                        result.innerText = "Знайдено штрихкод: " + result.text;
+
+                        // Отправляем результат в Telegram Bot
+                        if (window.Telegram && window.Telegram.WebApp) {
+                            window.Telegram.WebApp.sendData(result.text);
+                        }
+
+                        // Останавливаем сканирование
+                        codeReader.reset();
+                    }
+                    if (err) {
+                        console.error("Помилка сканування:", err);
+                        result.innerText = "Помилка сканування. Спробуйте ще раз.";
+                    }
+                });
+            } catch (err) {
+                console.error("Помилка доступу до камери:", err);
+                result.innerText = "Помилка доступу до камери. Перевірте дозвіл на доступ.";
+            }
         }
 
-        // Остановка сканирования
-        function stopScanning() {
-            codeReader.reset();
-            result.innerText = "Сканування зупинено.";
+        // Включение/выключение вспышки
+        async function toggleFlash() {
+            if (!mediaStream) return;
+
+            const track = mediaStream.getVideoTracks()[0];
+            if (!track || !track.getCapabilities().torch) {
+                result.innerText = "Ваш пристрій не підтримує управління вспышкою.";
+                return;
+            }
+
+            const torchSupported = track.getCapabilities().torch;
+            if (!torchSupported) {
+                result.innerText = "Ваш пристрій не підтримує управління вспышкою.";
+                return;
+            }
+
+            const torchActive = await track.getSettings().torch;
+            await track.applyConstraints({
+                advanced: [{ torch: !torchActive }]
+            });
+
+            flashButton.innerText = torchActive ? "Включити вспышку" : "Виключити вспышку";
         }
 
         // Запуск сканирования по нажатию кнопки
         startButton.addEventListener('click', () => {
             startScanning();
+        });
+
+        // Управление вспышкой по нажатию кнопки
+        flashButton.addEventListener('click', () => {
+            toggleFlash();
         });
     </script>
 </body>
