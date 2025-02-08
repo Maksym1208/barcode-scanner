@@ -23,12 +23,6 @@
             cursor: pointer;
             margin-bottom: 20px;
         }
-        #flash-button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
         #result {
             font-size: 18px;
             font-weight: bold;
@@ -40,14 +34,12 @@
     <h1>Сканування штрихкоду</h1>
     <video id="video" width="640" height="480" autoplay></video>
     <button id="start-button">Сканировать</button>
-    <button id="flash-button">Включити вспышку</button>
     <p id="result"></p>
 
     <script>
         // Элементы DOM
         const video = document.getElementById('video');
         const startButton = document.getElementById('start-button');
-        const flashButton = document.getElementById('flash-button');
         const result = document.getElementById('result');
 
         // Инициализация ZXing
@@ -61,7 +53,7 @@
             result.innerText = "Сканування...";
 
             try {
-                // Получаем доступ к задней камере с автофокусом
+                // Получаем доступ к задней камере
                 mediaStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: "environment", // Используем заднюю камеру
@@ -100,38 +92,15 @@
             }
         }
 
-        // Включение/выключение вспышки
-        async function toggleFlash() {
-            if (!mediaStream) return;
-
-            const track = mediaStream.getVideoTracks()[0];
-            if (!track || !track.getCapabilities().torch) {
-                result.innerText = "Ваш пристрій не підтримує управління вспышкою.";
-                return;
-            }
-
-            const torchSupported = track.getCapabilities().torch;
-            if (!torchSupported) {
-                result.innerText = "Ваш пристрій не підтримує управління вспышкою.";
-                return;
-            }
-
-            const torchActive = await track.getSettings().torch;
-            await track.applyConstraints({
-                advanced: [{ torch: !torchActive }]
-            });
-
-            flashButton.innerText = torchActive ? "Включити вспышку" : "Виключити вспышку";
+        // Остановка сканирования
+        function stopScanning() {
+            codeReader.reset();
+            result.innerText = "Сканування зупинено.";
         }
 
         // Запуск сканирования по нажатию кнопки
         startButton.addEventListener('click', () => {
             startScanning();
-        });
-
-        // Управление вспышкой по нажатию кнопки
-        flashButton.addEventListener('click', () => {
-            toggleFlash();
         });
     </script>
 </body>
