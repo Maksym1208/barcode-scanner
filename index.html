@@ -54,8 +54,7 @@
                 video: {
                     facingMode: "environment", // Используем заднюю камеру
                     width: { ideal: 1280 },   // Оптимальное разрешение для фокусировки
-                    height: { ideal: 720 },   // Оптимальное разрешение для фокусировки
-                    focusMode: "continuous"   // Непрерывная автофокусировка (если поддерживается)
+                    height: { ideal: 720 }    // Оптимальное разрешение для фокусировки
                 }
             })
                 .then((stream) => {
@@ -95,20 +94,20 @@
                         }
                         console.log("Сканер готов до роботи.");
                         Quagga.start();
-                    });
 
-                    // Обработка результата сканирования
-                    Quagga.onDetected(function (result) {
-                        const code = result.codeResult.code;
-                        result.innerText = "Знайдено штрихкод: " + code;
+                        // Обработка результата сканирования
+                        Quagga.onDetected(function (result) {
+                            const code = result.codeResult.code;
+                            result.innerText = "Знайдено штрихкод: " + code;
 
-                        // Отправляем результат в Telegram Bot
-                        if (window.Telegram && window.Telegram.WebApp) {
-                            window.Telegram.WebApp.sendData(code);
-                        }
+                            // Отправляем результат в Telegram Bot
+                            if (window.Telegram && window.Telegram.WebApp) {
+                                window.Telegram.WebApp.sendData(code);
+                            }
 
-                        // Останавливаем сканер после успешного сканирования
-                        Quagga.stop();
+                            // Останавливаем сканер после успешного сканирования
+                            Quagga.stop();
+                        });
                     });
                 })
                 .catch((err) => {
