@@ -37,53 +37,67 @@
     <p id="result"></p>
 
     <script>
-        // Проверка, работает ли приложение внутри Telegram Web App
-        const isTelegramWebApp = window.Telegram && window.Telegram.WebApp;
-
         // Элементы DOM
         const video = document.getElementById('video');
         const startButton = document.getElementById('start-button');
         const result = document.getElementById('result');
 
+        // Проверка поддержки getUserMedia
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            result.innerText = "Ваш браузер не підтримує доступ до камери.";
+        }
+
         // Инициализация сканера
         function initScanner() {
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: video,
-                    constraints: {
-                        width: 640,
-                        height: 480,
-                        facingMode: "environment" // Используем заднюю камеру
-                    },
-                },
-                decoder: {
-                    readers: ["code_128_reader", "ean_reader", "upc_reader"] // Поддерживаемые форматы штрихкодов
-                }
-            }, function (err) {
-                if (err) {
-                    console.error("Помилка ініціалізації сканера:", err);
-                    result.innerText = "Помилка ініціалізації сканера. Перевірте доступ до камери.";
-                    return;
-                }
-                console.log("Сканер готов до роботи.");
-                Quagga.start();
-            });
+            // Получаем доступ к камере
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then((stream) => {
+                    video.srcObject = stream; // Отображаем поток с камеры
+                    video.play(); // Запускаем видео
 
-            // Обработка результата сканирования
-            Quagga.onDetected(function (result) {
-                const code = result.codeResult.code;
-                result.innerText = "Знайдено штрихкод: " + code;
+                    // Инициализация QuaggaJS
+                    Quagga.init({
+                        inputStream: {
+                            name: "Live",
+                            type: "LiveStream",
+                            target: video,
+                            constraints: {
+                                width: 640,
+                                height: 480,
+                                facingMode: "environment" // Используем заднюю камеру
+                            },
+                        },
+                        decoder: {
+                            readers: ["code_128_reader", "ean_reader", "upc_reader"] // Поддерживаемые форматы штрихкодов
+                        }
+                    }, function (err) {
+                        if (err) {
+                            console.error("Помилка ініціалізації сканера:", err);
+                            result.innerText = "Помилка ініціалізації сканера. Перевірте доступ до камери.";
+                            return;
+                        }
+                        console.log("Сканер готов до роботи.");
+                        Quagga.start();
+                    });
 
-                // Отправляем результат в Telegram Bot
-                if (isTelegramWebApp) {
-                    window.Telegram.WebApp.sendData(code);
-                }
+                    // Обработка результата сканирования
+                    Quagga.onDetected(function (result) {
+                        const code = result.codeResult.code;
+                        result.innerText = "Знайдено штрихкод: " + code;
 
-                // Останавливаем сканер после успешного сканирования
-                Quagga.stop();
-            });
+                        // Отправляем результат в Telegram Bot
+                        if (window.Telegram && window.Telegram.WebApp) {
+                            window.Telegram.WebApp.sendData(code);
+                        }
+
+                        // Останавливаем сканер после успешного сканирования
+                        Quagga.stop();
+                    });
+                })
+                .catch((err) => {
+                    console.error("Помилка доступу до камери:", err);
+                    result.innerText = "Помилка доступу до камери. Перевірте дозвіл на доступ.";
+                });
         }
 
         // Запуск сканирования по нажатию кнопки
@@ -91,12 +105,6 @@
             result.innerText = "Сканування...";
             initScanner();
         });
-
-        // Если приложение запущено внутри Telegram Web App
-        if (isTelegramWebApp) {
-            // Telegram Web App может не поддерживать доступ к камере
-            result.innerText = "Сканування через Telegram Web App може бути обмежено. Спробуйте в браузері.";
-        }
     </script>
 </body>
 </html>
