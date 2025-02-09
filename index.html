@@ -4,7 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Сканер штрихкодів</title>
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script type="module">
+    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/library@latest/+esm';
+    const codeReader = new BrowserMultiFormatReader();
+    const videoElement = document.getElementById('video');
+    document.getElementById('start-button').addEventListener('click', async () => {
+        try {
+            const result = await codeReader.decodeFromVideoDevice(null, videoElement);
+            document.getElementById('result').innerText = "Знайдено штрихкод: " + result.text;
+            window.Telegram.WebApp.sendData(result.text);
+        } catch (error) {
+            console.error(error);
+            document.getElementById('result').innerText = "Помилка розпізнавання";
+        }
+    });
+</script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -56,12 +70,13 @@
                 // Получаем доступ к задней камере
                 mediaStream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: "environment", // Используем заднюю камеру
-                        width: { ideal: 1280 },   // Оптимальное разрешение
-                        height: { ideal: 720 },   // Оптимальное разрешение
-                        focusMode: "continuous"   // Непрерывный автофокус
-                    }
-                });
+                            facingMode: "environment",
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            focusMode: "continuous" // Автофокус
+                            }
+                        })
+
 
                 // Передаём поток с камеры в элемент <video>
                 video.srcObject = mediaStream;
